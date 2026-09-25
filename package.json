@@ -1,0 +1,33 @@
+{
+  "name": "jira-creatio-sync-service",
+  "version": "0.1.0",
+  "description": "Standalone Jira-to-Creatio synchronization service. Retrieves, normalizes, stores, and syncs Jira data, exposing it to Creatio via REST APIs and webhooks.",
+  "private": true,
+  "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "axios": "^1.7.0",
+    "dotenv": "^16.4.0",
+    "express": "^4.19.0",
+    "joi": "^17.13.0",
+    "mssql": "^11.0.0",
+    "node-cron": "^3.0.3",
+    "sequelize": "^6.37.0",
+    "winston": "^3.13.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "nock": "^13.5.0",
+    "supertest": "^7.0.0"
+  }
+}
