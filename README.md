@@ -10,9 +10,11 @@ the documented HTTP contract.
 
 ## Status
 
-**Foundation phase.** Architecture and API contract are documented; the
-project structure is scaffolded. Business logic implementation has not
-started yet. See `docs/PROGRESS.md` for current status and next steps.
+**Data foundation phase.** Architecture and API contract are documented;
+`config/`, `logging/`, and `models/` (Sequelize schema + migrations for the
+full data model) are implemented and tested. The Jira integration client,
+sync engine, and REST/webhook surface have not been built yet. See
+`docs/PROGRESS.md` for current status and next steps.
 
 ## Documentation
 

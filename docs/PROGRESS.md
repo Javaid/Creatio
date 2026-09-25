@@ -5,6 +5,75 @@ made, or a decision is deferred. Newest entries at the top.
 
 ---
 
+## 2026-09-25 — Phase 1: config, logging, models (data foundation)
+
+**Status: complete.**
+
+### What was done
+
+- `src/config/env.js`: Joi-validated, typed application config loaded from
+  environment variables (`dotenv` in dev). Fails fast (throws on require)
+  if a required variable is missing or invalid — verified with unit tests
+  covering defaults, CSV parsing, missing-required-field, and the
+  conditional `JIRA_EMAIL` requirement (only in `cloud-token` auth mode).
+- `src/config/database.js` + `.sequelizerc`: Sequelize-CLI-compatible DB
+  config, intentionally independent of `env.js` so migrations only need DB
+  credentials, not the full (Jira-inclusive) env schema.
+- `src/logging/`: winston-based structured logger (`logger.js`), a
+  recursive secret-redaction pass (`redact.js`, unit tested against
+  nested objects, arrays, circular refs, case-insensitive key matching),
+  and `withCorrelationId.js` for request/sync-run-scoped child loggers.
+- `src/models/`: all 16 Sequelize models from `DATABASE-DESIGN.md`
+  (`jira_projects` through `outbound_webhook_deliveries`), a shared
+  `_columns.js` helper for the SQL Server `NEWSEQUENTIALID()` UUID PK
+  pattern, `index.js` bootstrap with association wiring, and one
+  `sequelize-cli` migration per table in FK-dependency order (16 files
+  under `models/migrations/`).
+- `server.js` now wires `config/env`, the logger, a `requestContext`
+  middleware (request id generation/echo + correlation-scoped `req.log`),
+  a centralized `errorHandler` middleware (uniform error envelope per
+  `API-CONTRACT.md` §1), `/healthz` (no DB dependency) and `/readyz`
+  (checks `sequelize.authenticate()`), and graceful `SIGTERM`/`SIGINT`
+  shutdown that closes the DB pool before exiting.
+- Dependencies installed (`npm install`); `package.json` corrected to use
+  `tedious` (the driver Sequelize's `mssql` dialect actually needs) instead
+  of the standalone `mssql` package, and `sequelize-cli` added as a dev
+  dependency with `npm run migrate` / `migrate:undo` scripts.
+- Test coverage added: `tests/unit/config/env.test.js`,
+  `tests/unit/logging/redact.test.js`, `tests/unit/models/index.test.js`
+  (all 16 models registered, associations wired, no eager DB connection),
+  and `tests/integration/health.test.js` (supertest against `/healthz`,
+  `/readyz`, and the 404 fallback). All 18 tests pass; `eslint .` is clean.
+
+### Validation notes / limitations
+
+- No Docker daemon is available in this environment, so the 16 migrations
+  were validated structurally (each loads, exports `up`/`down`, correct
+  `queryInterface.createTable` shape, FK-dependency ordering checked by
+  hand) but **not yet executed against a real SQL Server instance**. Run
+  `npm run migrate` against an actual MSSQL target (local dev instance or
+  the target IIS host's SQL Server) before relying on this schema, and
+  watch specifically for: `NEWSEQUENTIALID()` literal acceptance, the
+  `ENUM` columns (Sequelize emulates these as `NVARCHAR` + `CHECK`
+  constraints on `mssql`, not native enums — worth a sanity check), and
+  index creation on nullable unique columns (`sync_checkpoints`).
+- No `onDelete: CASCADE` is used anywhere in the schema — SQL Server
+  rejects multiple cascade paths into the same table, and this schema has
+  several (e.g. `jira_projects` → `jira_sprints` → `jira_issues` and
+  `jira_projects` → `jira_issues` directly). Deletes are expected to be
+  rare for a sync mirror; use `is_active` flags instead. Documented in
+  `src/models/README.md`.
+
+### Next implementation step
+
+Phase 2: `integrations/jira` — a read-only Jira REST client (auth,
+pagination, rate-limit backoff), followed by a minimal `sync/` full-sync
+path for one entity type (projects) end-to-end. This still needs the two
+unresolved decisions below confirmed first (Jira edition, webhook auth
+mechanism) since they shape the client's auth strategy and adapter seam.
+
+---
+
 ## 2026-09-25 — Phase 0: Foundation (architecture & scaffolding)
 
 **Status: complete.**
